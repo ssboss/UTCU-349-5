@@ -1,9 +1,14 @@
+// UTCU CODE
+
+// Timescale
+#define k 4
+
 //Interface Pins
 const int PIN_TXEN = 0;
 const int PIN_DPSK = 1;  
 const int PIN_TO = 5;   
 const int PIN_FRO = 7;   
-const int PIN_ANTSELRD = 9;   
+const int PIN_ANTSELRD = 9;  
 
 // Antenna select bits
 const int PIN_ANT0 = 10;     
@@ -25,10 +30,6 @@ bool didData = false;
 bool didFRO = false;
 bool didOff = false;
 
-// wait time between to and fro scan (600 micro seconds)
-const unsigned long WAIT_TIME_US = 600;
-bool waitingForFRO = false;
-unsigned long toStartMicros = 0;
 
 //antenna const -> pins [D10][D11][D12]
 const int left_ant[] = {0,0,1}; // left OCI
@@ -76,68 +77,37 @@ void setup() {
   allSignalsLow();
   setAntenna(ANT_OFF);
 
-  sequenceStart = millis();
+  sequenceStart = micros();
 }
 
 void loop() {
-  unsigned long t = millis() - sequenceStart;
-
-
-  // Start of sequence
-  if (t >= SEQUENCE_TIME_MS) {
-    sequenceStart = millis();
-    didTO = false;
-    didData = false;
-    didFRO = false;
-    didOff = false;
-    allSignalsLow();
-    digitalWrite(PIN_TXEN, HIGH);
-  }
-
-  // timing layout
-
-  // Data section
-  if (t >= 0 && !didData) {
-    setAntenna(ANT_DATA);
-    pulseUs(PIN_ANTSELRD);
-    sendDPSKBits(az_preamble);
-    didData = true;
-  }
-
-  // To scan section
-  if (t >= 100 && !didTO) {
-    setAntenna(ANT_SCAN);
-    pulseUs(PIN_ANTSELRD);
-    pulseUs(PIN_TO);
-    didTO = true;
-    digitalWrite(PIN_TXEN, LOW);
-
-    toStartMicros = micros();
-  }
-
-  // Fro scan section
-  if (waitingForFRO && !didFRO && micros() - toStartMicros >= WAIT_TIME_US) {
-    digitalWrite(PIN_TXEN, HIGH);
-    setAntenna(ANT_SCAN);
-    pulseUs(PIN_ANTSELRD);
-    pulseUs(PIN_FRO);
-    didFRO = true;
-    waitingForFRO = false;
-  }
-
-  // Turning antenna off section
-  if (t >= 400 && !didOff) {
-    setAntenna(ANT_OFF);
-    pulseUs(PIN_ANTSELRD);
-    didOff = true;
-  }
+  sequence1();
+  sequence2();
+  sendDPSKBits(bdw1_content);
+  sendDPSKBits(bdw2_content);
+  sequence1();
+  sendDPSKBits(bdw3_content);
+  sendDPSKBits(bdw4_content);
+  sendDPSKBits(bdw5_content);
+  sequence2();
+  sequence1();
+  sendDPSKBits(bdw6_content);
+  sendDPSKBits(bdw1_content);
+  sendDPSKBits(bdw2_content);
+  sequence2();
+  sendDPSKBits(bdw3_content);
+  sequence1();
+  sequence2();
+  sendDPSKBits(bdw4_content);
+  sendDPSKBits(bdw5_content);
+  sendDPSKBits(bdw6_content);
 }
 
 
 // This function makes a short 1ms pulse
 void pulseUs(int pin) {
   digitalWrite(pin, HIGH);
-  delayMicroseconds(20); // short pulse
+  delayMicroseconds(20 * k); // short pulse
   digitalWrite(pin, LOW);
 }
 
@@ -160,7 +130,7 @@ void sendDPSKBits(const char *bits) {
 
     digitalWrite(PIN_DPSK, previous == '1' ? HIGH : LOW);
 
-    delayMicroseconds(100); // bit time placeholder
+    delayMicroseconds(64 * k); // bit time
   }
 
   digitalWrite(PIN_DPSK, LOW);
@@ -176,14 +146,211 @@ void allSignalsLow() {
   digitalWrite(PIN_ANTSELRD, LOW);
 }
 
+// EL, BDW1, AZ, BDW2, EL, BDW3, BAZ, BDW4, EL
+void azFunc() {
+  // Start of sequence
+  didTO = false;
+  didData = false;
+  didFRO = false;
+  didOff = false;
+  allSignalsLow();
+  digitalWrite(PIN_TXEN, HIGH);
+  
+
+  // timing layout
+
+  // Data section
+  sendDPSKBits(az_preamble);
+  didData = true;
+
+  // antenna Selection phase,
+  // I am setting the antenna to the correct switch position and then the time between switch
+  // positions is 2 bit width so i so 64 times 2 and then times our scale factor of 4
+  setAntenna(1);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(2);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(3);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(5);
+  pulseUs(PIN_ANTSELRD);
+
+  // To scan section
+  pulseUs(PIN_TO);
+  didTO = true;
+  delayMicroseconds(6200 * k);
+  digitalWrite(PIN_TXEN, LOW);
+
+
+  // wait time between to and fro scans
+  delayMicroseconds(600 * k);
+
+
+  // Fro scan section
+  digitalWrite(PIN_TXEN, HIGH);
+  pulseUs(PIN_FRO);
+  delayMicroseconds(6200 * k);
+  didFRO = true;
+
+ 
+
+  // Turning antenna off section
+  setAntenna(ANT_OFF);
+  pulseUs(PIN_ANTSELRD);
+  digitalWrite(PIN_TXEN, LOW);
+}
+
+void elFunc(){
+  // Start of sequence
+  didTO = false;
+  didData = false;
+  didFRO = false;
+  didOff = false;
+  allSignalsLow();
+  digitalWrite(PIN_TXEN, HIGH);
+  
+  // timing layout
+
+  // Data section
+  setAntenna(ANT_DATA);
+  pulseUs(PIN_ANTSELRD);
+  sendDPSKBits(el_preamble);
+  didData = true;
+
+  // Antena Jumps
+  setAntenna(1);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(2);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(3);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(5);
+  pulseUs(PIN_ANTSELRD);
+
+  // To scan section
+  pulseUs(PIN_TO);
+  didTO = true;
+  delayMicroseconds(6200 * k);
+  digitalWrite(PIN_TXEN, LOW);
+
+
+  // wait time between to and fro scans
+  delayMicroseconds(600 * k);
+
+
+  // Fro scan section
+  digitalWrite(PIN_TXEN, HIGH);
+  pulseUs(PIN_FRO);
+  didFRO = true;
+  delayMicroseconds(6200 * k);
+ 
+
+  // Turning antenna off section
+  setAntenna(ANT_OFF);
+  pulseUs(PIN_ANTSELRD);
+  digitalWrite(PIN_TXEN, LOW);
+}
+
+void bazFunc() {
+  // Start of sequence
+  didTO = false;
+  didData = false;
+  didFRO = false;
+  didOff = false;
+  allSignalsLow();
+  digitalWrite(PIN_TXEN, HIGH);
+  
+
+  // timing layout
+
+  // Data section
+  sendDPSKBits(baz_preamble);
+  didData = true;
+
+  // Antena Jumps
+  setAntenna(1);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(2);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(3);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 2 * k);
+
+  setAntenna(5);
+  pulseUs(PIN_ANTSELRD);
+
+  // To scan section
+  pulseUs(PIN_TO);
+  didTO = true;
+  delayMicroseconds(6200 * k);
+  digitalWrite(PIN_TXEN, LOW);
+
+
+  // wait time between to and fro scans
+  delayMicroseconds(600 * k);
+
+
+  // Fro scan section
+  digitalWrite(PIN_TXEN, HIGH);
+  pulseUs(PIN_FRO);
+  delayMicroseconds(6200 * k);
+  didFRO = true;
+ 
+
+  // Turning antenna off section
+  setAntenna(ANT_OFF);
+  pulseUs(PIN_ANTSELRD);
+  digitalWrite(PIN_TXEN, LOW);
+}
 
 // EL, BDW1, AZ, BDW2, EL, BDW3, BAZ, BDW4, EL
 void sequence1() {
-
+  elFunc();
+  sendDPSKBits(bdw1_content);
+  azFunc();
+  sendDPSKBits(bdw2_content);
+  elFunc();
+  sendDPSKBits(bdw3_content);
+  bazFunc();
+  sendDPSKBits(bdw4_content);
+  elFunc();
 }
 
 // EL, BDW5, AZ, BDW6, EL, AUXDATA, EL
 void sequence2() {
-
-
+  elFunc();
+  sendDPSKBits(bdw5_content);
+  azFunc();
+  sendDPSKBits(bdw6_content);
+  elFunc();
+  sendDPSKBits(adw_content);
+  elFunc();
 }
