@@ -6,14 +6,14 @@
 //Interface Pins
 const int PIN_TXEN = 0;
 const int PIN_DPSK = 1;  
-const int PIN_TO = 5;   
-const int PIN_FRO = 7;   
-const int PIN_ANTSELRD = 9;  
+const int PIN_TO = 7;   
+const int PIN_FRO = 9;   
+const int PIN_ANTSELRD = 10;  
 
 // Antenna select bits
-const int PIN_ANT0 = 10;     
-const int PIN_ANT1 = 11;    
-const int PIN_ANT2 = 12;     
+const int PIN_ANT0 = 11;     
+const int PIN_ANT1 = 12;    
+const int PIN_ANT2 = 13;     
 
 // Antenna values
 const int ANT_DATA = 0;
@@ -23,6 +23,9 @@ const int ANT_OFF  = 5;
 // Timing
 const unsigned long SEQUENCE_TIME_MS = 615;
 unsigned long sequenceStart = 0;
+const unsigned long PULSE_WIDTH = 20;
+const unsigned long BIT_WIDTH = 64;
+const unsigned long PULSE_LOW = BIT_WIDTH - PULSE_WIDTH;
 
 // flags to make sure each event is only happening once
 bool didTO = false;
@@ -82,34 +85,47 @@ void setup() {
 
 void loop() {
   sequence1();
-  sequence2();
-  sendDPSKBits(bdw1_content);
-  sendDPSKBits(bdw2_content);
-  sequence1();
-  sendDPSKBits(bdw3_content);
-  sendDPSKBits(bdw4_content);
-  sendDPSKBits(bdw5_content);
-  sequence2();
-  sequence1();
-  sendDPSKBits(bdw6_content);
-  sendDPSKBits(bdw1_content);
-  sendDPSKBits(bdw2_content);
-  sequence2();
-  sendDPSKBits(bdw3_content);
-  sequence1();
-  sequence2();
-  sendDPSKBits(bdw4_content);
-  sendDPSKBits(bdw5_content);
-  sendDPSKBits(bdw6_content);
+  // sequence2();
+  // sendDPSKBits(bdw1_content);
+  // sendDPSKBits(bdw2_content);
+  // sequence1();
+  // sendDPSKBits(bdw3_content);
+  // sendDPSKBits(bdw4_content);
+  // sendDPSKBits(bdw5_content);
+  // sequence2();
+  // sequence1();
+  // sendDPSKBits(bdw6_content);
+  // sendDPSKBits(bdw1_content);
+  // sendDPSKBits(bdw2_content);
+  // sequence2();
+  // sendDPSKBits(bdw3_content);
+  // sequence1();
+  // sequence2();
+  // sendDPSKBits(bdw4_content);
+  // sendDPSKBits(bdw5_content);
+  // sendDPSKBits(bdw6_content);
 }
 
 
 // This function makes a short 1ms pulse
+// void pulseUs(int pin) {
+//   digitalWrite(pin, HIGH);
+//   delayMicroseconds(20 * k); // short pulse
+//   digitalWrite(pin, LOW);
+// }
+
 void pulseUs(int pin) {
+  unsigned long start = micros();
+
+  Serial.println("OOOOOHHHH Im pulsing :P");
   digitalWrite(pin, HIGH);
-  delayMicroseconds(20 * k); // short pulse
+  //while (micros() - start > PULSE_WIDTH*k);
+  delayMicroseconds(PULSE_WIDTH * k);
   digitalWrite(pin, LOW);
+  //while(micros() - start > PULSE_LOW*k);
+  delayMicroseconds(PULSE_LOW * k);
 }
+
 
 // This function writes a 3-bit antenna number
 void setAntenna(int value) {
@@ -120,20 +136,35 @@ void setAntenna(int value) {
 
 // This function will send the binary data as differential DPSK values
 // Pretty much reading if the binary data switches from 0 to 1 or 1 to 0
+// void sendDPSKBits(const char *bits) {
+//   char previous = '0';
+
+//   for (int i = 0; bits[i] != '\0'; i++) {
+//     if (bits[i] == '1') {
+//       previous = (previous == '0') ? '1' : '0';
+//     }
+
+//     //digitalWrite(PIN_DPSK, previous == '1' ? HIGH : LOW);
+//     pulseUs(PIN_DPSK);
+
+//     delayMicroseconds(64 * k); // bit time
+//   }
+
+//   digitalWrite(PIN_DPSK, LOW);
+// }
+
+// This is by Zack I dont think your function works, need to xor current bit with previous bit which you arent doing
 void sendDPSKBits(const char *bits) {
-  char previous = '0';
+  char prevBit = '0';
 
   for (int i = 0; bits[i] != '\0'; i++) {
-    if (bits[i] == '1') {
-      previous = (previous == '0') ? '1' : '0';
+    if ((bits[i] == '1' && prevBit == '0') || (bits[i] == '0' && prevBit == '1')) {
+      pulseUs(PIN_DPSK);
+    } else {
+      delayMicroseconds(BIT_WIDTH * k);
     }
-
-    digitalWrite(PIN_DPSK, previous == '1' ? HIGH : LOW);
-
-    delayMicroseconds(64 * k); // bit time
+    prevBit = bits[i];
   }
-
-  digitalWrite(PIN_DPSK, LOW);
 }
 
 
@@ -162,33 +193,43 @@ void azFunc() {
   // Data section
   sendDPSKBits(az_preamble);
   didData = true;
+  digitalWrite(PIN_TXEN, LOW);
+
+  delay(1);
+  digitalWrite(PIN_TXEN, HIGH);
 
   // antenna Selection phase,
   // I am setting the antenna to the correct switch position and then the time between switch
   // positions is 2 bit width so i so 64 times 2 and then times our scale factor of 4
-  setAntenna(1);
-  pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  
+  // setAntenna(1);
+  // pulseUs(PIN_ANTSELRD);
+  // //delayMicroseconds(64 * 2 * k);
 
-  setAntenna(2);
-  pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  // setAntenna(2);
+  // pulseUs(PIN_ANTSELRD);
+  // //delayMicroseconds(64 * 2 * k);
 
-  setAntenna(3);
-  pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  // setAntenna(3);
+  // pulseUs(PIN_ANTSELRD);
+  // //delayMicroseconds(64 * 2 * k);
 
-  setAntenna(0);
-  pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  // setAntenna(0);
+  // pulseUs(PIN_ANTSELRD);
+  // //delayMicroseconds(64 * 2 * k);
 
-  setAntenna(5);
-  pulseUs(PIN_ANTSELRD);
+  // setAntenna(5);
+  // pulseUs(PIN_ANTSELRD);
+  // digitalWrite(PIN_ANTSELRD, LOW);
+  // Serial.println(digitalRead(PIN_ANTSELRD));
 
   // To scan section
+  digitalWrite(PIN_ANT0, 1);
+  digitalWrite(PIN_ANT1, 0);
+  digitalWrite(PIN_ANT2, 0);
   pulseUs(PIN_TO);
   didTO = true;
-  delayMicroseconds(6200 * k);
+  delayMicroseconds(6200 * k); // I think you need to subtract the pulse time from this, scanning beam will start on rising edge so right at the start
   digitalWrite(PIN_TXEN, LOW);
 
 
@@ -205,8 +246,8 @@ void azFunc() {
  
 
   // Turning antenna off section
-  setAntenna(ANT_OFF);
-  pulseUs(PIN_ANTSELRD);
+  //setAntenna(ANT_OFF);
+  //pulseUs(PIN_ANTSELRD);
   digitalWrite(PIN_TXEN, LOW);
 }
 
@@ -333,15 +374,20 @@ void bazFunc() {
 
 // EL, BDW1, AZ, BDW2, EL, BDW3, BAZ, BDW4, EL
 void sequence1() {
-  elFunc();
-  sendDPSKBits(bdw1_content);
+  // elFunc();
+  
+  // make sure you are enabling before sending basic data words
+  // digitalWrite(PIN_TXEN, HIGH);
+  // sendDPSKBits(bdw1_content);
+  // digitalWrite(PIN_TXEN, LOW);
   azFunc();
-  sendDPSKBits(bdw2_content);
-  elFunc();
-  sendDPSKBits(bdw3_content);
-  bazFunc();
-  sendDPSKBits(bdw4_content);
-  elFunc();
+  // sendDPSKBits(bdw2_content);
+  // elFunc();
+  // sendDPSKBits(bdw3_content);
+  // bazFunc();
+  // sendDPSKBits(bdw4_content);
+  // elFunc();
+  delay(1000);
 }
 
 // EL, BDW5, AZ, BDW6, EL, AUXDATA, EL
