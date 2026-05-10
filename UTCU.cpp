@@ -153,7 +153,7 @@ void setAntenna(int value) {
 //   digitalWrite(PIN_DPSK, LOW);
 // }
 
-// This is by Zack I dont think your function works, need to xor current bit with previous bit which you arent doing
+
 void sendDPSKBits(const char *bits) {
   char prevBit = '0';
 
