@@ -8,7 +8,7 @@ const int PIN_TXEN = 0;
 const int PIN_DPSK = 1;  
 const int PIN_TO = 7;   
 const int PIN_FRO = 9;   
-const int PIN_ANTSELRD = 10;  
+const int PIN_ANTSELRD = 4;  
 
 // Antenna select bits
 const int PIN_ANT0 = 11;     
@@ -79,31 +79,37 @@ void setup() {
 
   allSignalsLow();
   setAntenna(ANT_OFF);
-
-  sequenceStart = micros();
 }
 
 void loop() {
+  digitalWrite(3, HIGH);
   sequence1();
+  digitalWrite(3, LOW);
   // sequence2();
   // sendDPSKBits(bdw1_content);
   // sendDPSKBits(bdw2_content);
+  // //delayMicroseconds(1.25 * 2 * k);
   // sequence1();
+  // //delayMicroseconds(1.25 * 3 * k);
   // sendDPSKBits(bdw3_content);
   // sendDPSKBits(bdw4_content);
   // sendDPSKBits(bdw5_content);
   // sequence2();
   // sequence1();
+  // //delayMicroseconds(1.25 * 3 * k);
   // sendDPSKBits(bdw6_content);
   // sendDPSKBits(bdw1_content);
   // sendDPSKBits(bdw2_content);
   // sequence2();
+  // //delayMicroseconds(1.25 * k);
   // sendDPSKBits(bdw3_content);
   // sequence1();
   // sequence2();
+  // //delayMicroseconds(1.25 * 3 * k);
   // sendDPSKBits(bdw4_content);
   // sendDPSKBits(bdw5_content);
   // sendDPSKBits(bdw6_content);
+  delay(1000);
 }
 
 
@@ -117,7 +123,7 @@ void loop() {
 void pulseUs(int pin) {
   unsigned long start = micros();
 
-  Serial.println("OOOOOHHHH Im pulsing :P");
+  // Serial.println("OOOOOHHHH Im pulsing :P");
   digitalWrite(pin, HIGH);
   //while (micros() - start > PULSE_WIDTH*k);
   delayMicroseconds(PULSE_WIDTH * k);
@@ -153,7 +159,6 @@ void setAntenna(int value) {
 //   digitalWrite(PIN_DPSK, LOW);
 // }
 
-
 void sendDPSKBits(const char *bits) {
   char prevBit = '0';
 
@@ -177,6 +182,7 @@ void allSignalsLow() {
   digitalWrite(PIN_ANTSELRD, LOW);
 }
 
+// -------------------------------------------
 // EL, BDW1, AZ, BDW2, EL, BDW3, BAZ, BDW4, EL
 void azFunc() {
   // Start of sequence
@@ -186,6 +192,8 @@ void azFunc() {
   didOff = false;
   allSignalsLow();
   digitalWrite(PIN_TXEN, HIGH);
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
   
 
   // timing layout
@@ -194,34 +202,35 @@ void azFunc() {
   sendDPSKBits(az_preamble);
   didData = true;
   digitalWrite(PIN_TXEN, LOW);
-
-  delay(1);
   digitalWrite(PIN_TXEN, HIGH);
 
   // antenna Selection phase,
   // I am setting the antenna to the correct switch position and then the time between switch
   // positions is 2 bit width so i so 64 times 2 and then times our scale factor of 4
   
-  // setAntenna(1);
-  // pulseUs(PIN_ANTSELRD);
-  // //delayMicroseconds(64 * 2 * k);
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 5 * k);
 
-  // setAntenna(2);
-  // pulseUs(PIN_ANTSELRD);
-  // //delayMicroseconds(64 * 2 * k);
+  setAntenna(1);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * k);
 
-  // setAntenna(3);
-  // pulseUs(PIN_ANTSELRD);
-  // //delayMicroseconds(64 * 2 * k);
+  setAntenna(2);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * k);
 
-  // setAntenna(0);
-  // pulseUs(PIN_ANTSELRD);
-  // //delayMicroseconds(64 * 2 * k);
+  setAntenna(3);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * k);
+
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * k);
 
   // setAntenna(5);
   // pulseUs(PIN_ANTSELRD);
   // digitalWrite(PIN_ANTSELRD, LOW);
-  // Serial.println(digitalRead(PIN_ANTSELRD));
 
   // To scan section
   digitalWrite(PIN_ANT0, 1);
@@ -229,7 +238,7 @@ void azFunc() {
   digitalWrite(PIN_ANT2, 0);
   pulseUs(PIN_TO);
   didTO = true;
-  delayMicroseconds(6200 * k); // I think you need to subtract the pulse time from this, scanning beam will start on rising edge so right at the start
+  delayMicroseconds((6200 * k) - (BIT_WIDTH * k)); 
   digitalWrite(PIN_TXEN, LOW);
 
 
@@ -240,7 +249,7 @@ void azFunc() {
   // Fro scan section
   digitalWrite(PIN_TXEN, HIGH);
   pulseUs(PIN_FRO);
-  delayMicroseconds(6200 * k);
+  delayMicroseconds((6200 * k) - (BIT_WIDTH * k));
   didFRO = true;
 
  
@@ -248,9 +257,15 @@ void azFunc() {
   // Turning antenna off section
   //setAntenna(ANT_OFF);
   //pulseUs(PIN_ANTSELRD);
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
   digitalWrite(PIN_TXEN, LOW);
+
+  delayMicroseconds(212 * k);
 }
 
+
+// -------------------------------------------
 void elFunc(){
   // Start of sequence
   didTO = false;
@@ -259,39 +274,52 @@ void elFunc(){
   didOff = false;
   allSignalsLow();
   digitalWrite(PIN_TXEN, HIGH);
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
   
   // timing layout
 
   // Data section
-  setAntenna(ANT_DATA);
-  pulseUs(PIN_ANTSELRD);
+  //setAntenna(ANT_DATA);
+  //pulseUs(PIN_ANTSELRD);
+  //sendDPSKBits(el_preamble);
+  //didData = true;
+
   sendDPSKBits(el_preamble);
   didData = true;
+  digitalWrite(PIN_TXEN, LOW);
+  digitalWrite(PIN_TXEN, HIGH);
 
-  // Antena Jumps
+  // Antenna sweep
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 5 * k);
+
   setAntenna(1);
   pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  delayMicroseconds(64 * k);
 
   setAntenna(2);
   pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  delayMicroseconds(64 * k);
 
   setAntenna(3);
   pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  delayMicroseconds(64 * k);
 
   setAntenna(0);
   pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  delayMicroseconds(64 * k);
 
-  setAntenna(5);
-  pulseUs(PIN_ANTSELRD);
+  // Lets USSIM know it enable el beam
+  digitalWrite(PIN_ANT0, 0);
+  digitalWrite(PIN_ANT1, 1);
+  digitalWrite(PIN_ANT2, 0);
 
   // To scan section
   pulseUs(PIN_TO);
   didTO = true;
-  delayMicroseconds(6200 * k);
+  delayMicroseconds((1550 * k) - (BIT_WIDTH * k));
   digitalWrite(PIN_TXEN, LOW);
 
 
@@ -303,15 +331,20 @@ void elFunc(){
   digitalWrite(PIN_TXEN, HIGH);
   pulseUs(PIN_FRO);
   didFRO = true;
-  delayMicroseconds(6200 * k);
+  delayMicroseconds((1550 * k) - (BIT_WIDTH * k));
  
 
   // Turning antenna off section
-  setAntenna(ANT_OFF);
+  //setAntenna(ANT_OFF);
+  //pulseUs(PIN_ANTSELRD);
+  setAntenna(0);
   pulseUs(PIN_ANTSELRD);
   digitalWrite(PIN_TXEN, LOW);
+  delayMicroseconds(244 * k);
 }
 
+
+//-------------------------------------
 void bazFunc() {
   // Start of sequence
   didTO = false;
@@ -320,38 +353,51 @@ void bazFunc() {
   didOff = false;
   allSignalsLow();
   digitalWrite(PIN_TXEN, HIGH);
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
   
 
   // timing layout
 
   // Data section
+  //sendDPSKBits(baz_preamble);
+  //didData = true;
+
   sendDPSKBits(baz_preamble);
   didData = true;
+  digitalWrite(PIN_TXEN, LOW);
+  digitalWrite(PIN_TXEN, HIGH);
 
-  // Antena Jumps
+  // Antenna sweep
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 5 * k);
+
   setAntenna(1);
   pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  delayMicroseconds(64 * k);
 
   setAntenna(2);
   pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  delayMicroseconds(64 * k);
 
   setAntenna(3);
   pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  delayMicroseconds(64 * k);
 
   setAntenna(0);
   pulseUs(PIN_ANTSELRD);
-  delayMicroseconds(64 * 2 * k);
+  delayMicroseconds(64 * k);
 
-  setAntenna(5);
-  pulseUs(PIN_ANTSELRD);
+  // Lets USSIM know to enables BAZ scanning beam
+  digitalWrite(PIN_ANT0, 0);
+  digitalWrite(PIN_ANT1, 0);
+  digitalWrite(PIN_ANT2, 1);
 
   // To scan section
   pulseUs(PIN_TO);
   didTO = true;
-  delayMicroseconds(6200 * k);
+  delayMicroseconds((4200 * k) - (BIT_WIDTH * k));
   digitalWrite(PIN_TXEN, LOW);
 
 
@@ -362,41 +408,84 @@ void bazFunc() {
   // Fro scan section
   digitalWrite(PIN_TXEN, HIGH);
   pulseUs(PIN_FRO);
-  delayMicroseconds(6200 * k);
+  delayMicroseconds((4200 * k) - (BIT_WIDTH * k));
   didFRO = true;
  
 
   // Turning antenna off section
-  setAntenna(ANT_OFF);
+  //setAntenna(ANT_OFF);
+  //pulseUs(PIN_ANTSELRD);
+  setAntenna(0);
   pulseUs(PIN_ANTSELRD);
   digitalWrite(PIN_TXEN, LOW);
+  delayMicroseconds(212 * k);
 }
 
 // EL, BDW1, AZ, BDW2, EL, BDW3, BAZ, BDW4, EL
 void sequence1() {
-  // elFunc();
-  
-  // make sure you are enabling before sending basic data words
-  // digitalWrite(PIN_TXEN, HIGH);
-  // sendDPSKBits(bdw1_content);
-  // digitalWrite(PIN_TXEN, LOW);
+  elFunc();
+
+  digitalWrite(PIN_TXEN, HIGH);
+  sendDPSKBits(bdw1_preamble);
+  sendDPSKBits(bdw1_content);
+  digitalWrite(PIN_TXEN, LOW);
+  delayMicroseconds(220 * k);
+  delayMicroseconds(2200*k);
+
   azFunc();
-  // sendDPSKBits(bdw2_content);
-  // elFunc();
-  // sendDPSKBits(bdw3_content);
-  // bazFunc();
-  // sendDPSKBits(bdw4_content);
-  // elFunc();
-  delay(1000);
+
+  digitalWrite(PIN_TXEN, HIGH);
+  sendDPSKBits(bdw2_preamble);
+  sendDPSKBits(bdw2_content);
+  digitalWrite(PIN_TXEN, LOW);
+  delayMicroseconds(220 * k);
+  delayMicroseconds(2200 * k);
+
+  elFunc();
+
+  digitalWrite(PIN_TXEN, HIGH);
+  sendDPSKBits(bdw3_preamble);
+  sendDPSKBits(bdw3_content);
+  digitalWrite(PIN_TXEN, LOW);
+  delayMicroseconds(220 * k);
+  delayMicroseconds(2200 * k);
+
+  bazFunc();
+
+  digitalWrite(PIN_TXEN, HIGH);
+  sendDPSKBits(bdw4_preamble);
+  sendDPSKBits(bdw4_content);
+  digitalWrite(PIN_TXEN, LOW);
+  delayMicroseconds(220 * k);
+
+  elFunc();
+  
+  delay(8 * k);
 }
 
 // EL, BDW5, AZ, BDW6, EL, AUXDATA, EL
 void sequence2() {
   elFunc();
+
+  digitalWrite(PIN_TXEN, HIGH);
   sendDPSKBits(bdw5_content);
+  digitalWrite(PIN_TXEN, LOW);
+  delayMicroseconds(220 * k);
+
   azFunc();
+
+  digitalWrite(PIN_TXEN, HIGH);
   sendDPSKBits(bdw6_content);
+  digitalWrite(PIN_TXEN, LOW);
+  delayMicroseconds(220 * k);
+
   elFunc();
+
+  digitalWrite(PIN_TXEN, HIGH);
   sendDPSKBits(adw_content);
+  digitalWrite(PIN_TXEN, LOW);
+  delayMicroseconds(204 * k);
+
   elFunc();
+
 }
