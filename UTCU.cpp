@@ -468,6 +468,7 @@ void sequence2() {
   elFunc();
 
   digitalWrite(PIN_TXEN, HIGH);
+  sendDPSKBits(bdw5_preamble);
   sendDPSKBits(bdw5_content);
   digitalWrite(PIN_TXEN, LOW);
   delayMicroseconds(220 * k);
@@ -475,6 +476,7 @@ void sequence2() {
   azFunc();
 
   digitalWrite(PIN_TXEN, HIGH);
+  sendDPSKBits(bdw6_preamble);
   sendDPSKBits(bdw6_content);
   digitalWrite(PIN_TXEN, LOW);
   delayMicroseconds(220 * k);
@@ -482,6 +484,7 @@ void sequence2() {
   elFunc();
 
   digitalWrite(PIN_TXEN, HIGH);
+  sendDPSKBits(adw_premable);
   sendDPSKBits(adw_content);
   digitalWrite(PIN_TXEN, LOW);
   delayMicroseconds(204 * k);
