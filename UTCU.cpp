@@ -3,12 +3,20 @@
 // Timescale
 #define k 4
 
+// The current station:
+// 0 = ALL, 1 = AZ, 2 = BAZ, 3 = EL
+#define STATION 0
+
+// 0 = regular, 1 = high rate approach
+#define SEQUENCE 0
+
 //Interface Pins
 const int PIN_TXEN = 0;
 const int PIN_DPSK = 1;  
 const int PIN_TO = 7;   
 const int PIN_FRO = 9;   
 const int PIN_ANTSELRD = 4;  
+const int PIN_SEQSRT = 3;
 
 // Antenna select bits
 const int PIN_ANT0 = 11;     
@@ -27,12 +35,6 @@ const unsigned long PULSE_WIDTH = 20;
 const unsigned long BIT_WIDTH = 64;
 const unsigned long PULSE_LOW = BIT_WIDTH - PULSE_WIDTH;
 
-// flags to make sure each event is only happening once
-bool didTO = false;
-bool didData = false;
-bool didFRO = false;
-bool didOff = false;
-
 
 //antenna const -> pins [D10][D11][D12]
 const int left_ant[] = {0,0,1}; // left OCI
@@ -45,6 +47,7 @@ const int all_ant[] = {0,0,0}; //all functions state
 const char az_preamble[] = "0000000000000111010011001"; // AZ preamble
 const char el_preamble[] = "0000000000000111011100001"; // EL preamble
 const char baz_preamble[] = "0000000000000111011001001"; // BAZ premable
+const char haz_preamble[] = "0000000000000111010010100"; // HAZ pweamble :p
 
 const char bdw1_preamble[] = "0000000000000111010101000"; // bdw1 preamble
 const char bdw2_preamble[] = "0000000000000111010111100"; // bdw2 preamble
@@ -72,6 +75,7 @@ void setup() {
   pinMode(PIN_TO, OUTPUT);
   pinMode(PIN_FRO, OUTPUT);
   pinMode(PIN_ANTSELRD, OUTPUT);
+  pinMode(PIN_SEQSRT, OUTPUT);
 
   pinMode(PIN_ANT0, OUTPUT);
   pinMode(PIN_ANT1, OUTPUT);
@@ -82,34 +86,12 @@ void setup() {
 }
 
 void loop() {
-  digitalWrite(3, HIGH);
-  sequence1();
-  digitalWrite(3, LOW);
-  // sequence2();
-  // sendDPSKBits(bdw1_content);
-  // sendDPSKBits(bdw2_content);
-  // //delayMicroseconds(1.25 * 2 * k);
-  // sequence1();
-  // //delayMicroseconds(1.25 * 3 * k);
-  // sendDPSKBits(bdw3_content);
-  // sendDPSKBits(bdw4_content);
-  // sendDPSKBits(bdw5_content);
-  // sequence2();
-  // sequence1();
-  // //delayMicroseconds(1.25 * 3 * k);
-  // sendDPSKBits(bdw6_content);
-  // sendDPSKBits(bdw1_content);
-  // sendDPSKBits(bdw2_content);
-  // sequence2();
-  // //delayMicroseconds(1.25 * k);
-  // sendDPSKBits(bdw3_content);
-  // sequence1();
-  // sequence2();
-  // //delayMicroseconds(1.25 * 3 * k);
-  // sendDPSKBits(bdw4_content);
-  // sendDPSKBits(bdw5_content);
-  // sendDPSKBits(bdw6_content);
-  delay(1000);
+
+  if (SEQUENCE == 0){
+    regSeq();
+  } else {
+    highAzApSeq();
+  }
 }
 
 
@@ -119,6 +101,158 @@ void loop() {
 //   delayMicroseconds(20 * k); // short pulse
 //   digitalWrite(pin, LOW);
 // }
+
+// Regular sequence
+void regSeq(){
+    digitalWrite(PIN_SEQSRT, HIGH);
+    delayMicroseconds(1);
+    digitalWrite(PIN_SEQSRT, LOW);
+
+
+    sequence1();
+    sequence2();
+
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw1_preamble);
+    sendDPSKBits(bdw1_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw2_preamble);
+    sendDPSKBits(bdw2_content);
+    digitalWrite(PIN_TXEN, LOW);
+
+    sequence1();
+
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw3_preamble);
+    sendDPSKBits(bdw3_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw4_preamble);
+    sendDPSKBits(bdw4_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw5_preamble);
+    sendDPSKBits(bdw5_content);
+    digitalWrite(PIN_TXEN, LOW);
+
+    sequence2();
+    sequence1();
+
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw6_preamble);
+    sendDPSKBits(bdw6_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw1_preamble);
+    sendDPSKBits(bdw1_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw2_preamble);
+    sendDPSKBits(bdw2_content);
+    digitalWrite(PIN_TXEN, LOW);
+
+    sequence2();
+
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw3_preamble);
+    sendDPSKBits(bdw3_content);
+    digitalWrite(PIN_TXEN, LOW);
+
+    sequence1();
+    sequence2();
+
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw4_preamble);
+    sendDPSKBits(bdw4_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw5_preamble);
+    sendDPSKBits(bdw5_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw6_preamble);
+    sendDPSKBits(bdw6_content);
+    digitalWrite(PIN_TXEN, LOW);
+
+    delay(1000);
+}
+
+void highAzApSeq(){
+    digitalWrite(PIN_SEQSRT, HIGH);
+    delayMicroseconds(1);
+    digitalWrite(PIN_SEQSRT, LOW);
+
+
+    sequence1High();
+    sequence2High();
+
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw1_preamble);
+    sendDPSKBits(bdw1_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw2_preamble);
+    sendDPSKBits(bdw2_content);
+    digitalWrite(PIN_TXEN, LOW);
+
+    sequence1High();
+
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw3_preamble);
+    sendDPSKBits(bdw3_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw4_preamble);
+    sendDPSKBits(bdw4_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw5_preamble);
+    sendDPSKBits(bdw5_content);
+    digitalWrite(PIN_TXEN, LOW);
+
+    sequence2High();
+    sequence1High();
+
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw6_preamble);
+    sendDPSKBits(bdw6_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw1_preamble);
+    sendDPSKBits(bdw1_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw2_preamble);
+    sendDPSKBits(bdw2_content);
+    digitalWrite(PIN_TXEN, LOW);
+
+    sequence2High();
+
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw3_preamble);
+    sendDPSKBits(bdw3_content);
+    digitalWrite(PIN_TXEN, LOW);
+
+    sequence1High();
+    sequence2High();
+
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw4_preamble);
+    sendDPSKBits(bdw4_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw5_preamble);
+    sendDPSKBits(bdw5_content);
+    digitalWrite(PIN_TXEN, LOW);
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw6_preamble);
+    sendDPSKBits(bdw6_content);
+    digitalWrite(PIN_TXEN, LOW);
+
+    delay(1000);
+}
+
 
 void pulseUs(int pin) {
   unsigned long start = micros();
@@ -142,22 +276,7 @@ void setAntenna(int value) {
 
 // This function will send the binary data as differential DPSK values
 // Pretty much reading if the binary data switches from 0 to 1 or 1 to 0
-// void sendDPSKBits(const char *bits) {
-//   char previous = '0';
 
-//   for (int i = 0; bits[i] != '\0'; i++) {
-//     if (bits[i] == '1') {
-//       previous = (previous == '0') ? '1' : '0';
-//     }
-
-//     //digitalWrite(PIN_DPSK, previous == '1' ? HIGH : LOW);
-//     pulseUs(PIN_DPSK);
-
-//     delayMicroseconds(64 * k); // bit time
-//   }
-
-//   digitalWrite(PIN_DPSK, LOW);
-// }
 
 void sendDPSKBits(const char *bits) {
   char prevBit = '0';
@@ -186,10 +305,6 @@ void allSignalsLow() {
 // EL, BDW1, AZ, BDW2, EL, BDW3, BAZ, BDW4, EL
 void azFunc() {
   // Start of sequence
-  didTO = false;
-  didData = false;
-  didFRO = false;
-  didOff = false;
   allSignalsLow();
   digitalWrite(PIN_TXEN, HIGH);
   setAntenna(0);
@@ -200,7 +315,6 @@ void azFunc() {
 
   // Data section
   sendDPSKBits(az_preamble);
-  didData = true;
   digitalWrite(PIN_TXEN, LOW);
   digitalWrite(PIN_TXEN, HIGH);
 
@@ -237,7 +351,6 @@ void azFunc() {
   digitalWrite(PIN_ANT1, 0);
   digitalWrite(PIN_ANT2, 0);
   pulseUs(PIN_TO);
-  didTO = true;
   delayMicroseconds((6200 * k) - (BIT_WIDTH * k)); 
   digitalWrite(PIN_TXEN, LOW);
 
@@ -250,7 +363,6 @@ void azFunc() {
   digitalWrite(PIN_TXEN, HIGH);
   pulseUs(PIN_FRO);
   delayMicroseconds((6200 * k) - (BIT_WIDTH * k));
-  didFRO = true;
 
  
 
@@ -268,10 +380,6 @@ void azFunc() {
 // -------------------------------------------
 void elFunc(){
   // Start of sequence
-  didTO = false;
-  didData = false;
-  didFRO = false;
-  didOff = false;
   allSignalsLow();
   digitalWrite(PIN_TXEN, HIGH);
   setAntenna(0);
@@ -286,7 +394,6 @@ void elFunc(){
   //didData = true;
 
   sendDPSKBits(el_preamble);
-  didData = true;
   digitalWrite(PIN_TXEN, LOW);
   digitalWrite(PIN_TXEN, HIGH);
 
@@ -318,7 +425,6 @@ void elFunc(){
 
   // To scan section
   pulseUs(PIN_TO);
-  didTO = true;
   delayMicroseconds((1550 * k) - (BIT_WIDTH * k));
   digitalWrite(PIN_TXEN, LOW);
 
@@ -330,7 +436,6 @@ void elFunc(){
   // Fro scan section
   digitalWrite(PIN_TXEN, HIGH);
   pulseUs(PIN_FRO);
-  didFRO = true;
   delayMicroseconds((1550 * k) - (BIT_WIDTH * k));
  
 
@@ -347,10 +452,6 @@ void elFunc(){
 //-------------------------------------
 void bazFunc() {
   // Start of sequence
-  didTO = false;
-  didData = false;
-  didFRO = false;
-  didOff = false;
   allSignalsLow();
   digitalWrite(PIN_TXEN, HIGH);
   setAntenna(0);
@@ -364,7 +465,6 @@ void bazFunc() {
   //didData = true;
 
   sendDPSKBits(baz_preamble);
-  didData = true;
   digitalWrite(PIN_TXEN, LOW);
   digitalWrite(PIN_TXEN, HIGH);
 
@@ -396,7 +496,6 @@ void bazFunc() {
 
   // To scan section
   pulseUs(PIN_TO);
-  didTO = true;
   delayMicroseconds((4200 * k) - (BIT_WIDTH * k));
   digitalWrite(PIN_TXEN, LOW);
 
@@ -409,7 +508,76 @@ void bazFunc() {
   digitalWrite(PIN_TXEN, HIGH);
   pulseUs(PIN_FRO);
   delayMicroseconds((4200 * k) - (BIT_WIDTH * k));
-  didFRO = true;
+ 
+
+  // Turning antenna off section
+  //setAntenna(ANT_OFF);
+  //pulseUs(PIN_ANTSELRD);
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  digitalWrite(PIN_TXEN, LOW);
+  delayMicroseconds(212 * k);
+}
+
+//-------------------------------------
+void hazFunc() {
+  // Start of sequence
+  allSignalsLow();
+  digitalWrite(PIN_TXEN, HIGH);
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  
+
+  // timing layout
+
+  // Data section
+  //sendDPSKBits(baz_preamble);
+  //didData = true;
+
+  sendDPSKBits(haz_preamble);
+  digitalWrite(PIN_TXEN, LOW);
+  digitalWrite(PIN_TXEN, HIGH);
+
+  // Antenna sweep
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * 5 * k);
+
+  setAntenna(1);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * k);
+
+  setAntenna(2);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * k);
+
+  setAntenna(3);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * k);
+
+  setAntenna(0);
+  pulseUs(PIN_ANTSELRD);
+  delayMicroseconds(64 * k);
+
+  // Lets USSIM know to enables BAZ scanning beam
+  digitalWrite(PIN_ANT0, 0);
+  digitalWrite(PIN_ANT1, 0);
+  digitalWrite(PIN_ANT2, 1);
+
+  // To scan section
+  pulseUs(PIN_FRO);
+  delayMicroseconds((4200 * k) - (BIT_WIDTH * k));
+  digitalWrite(PIN_TXEN, LOW);
+
+
+  // wait time between to and fro scans
+  delayMicroseconds(600 * k);
+
+
+  // Fro scan section
+  digitalWrite(PIN_TXEN, HIGH);
+  pulseUs(PIN_TO);
+  delayMicroseconds((4200 * k) - (BIT_WIDTH * k));
  
 
   // Turning antenna off section
@@ -423,72 +591,298 @@ void bazFunc() {
 
 // EL, BDW1, AZ, BDW2, EL, BDW3, BAZ, BDW4, EL
 void sequence1() {
-  elFunc();
 
-  digitalWrite(PIN_TXEN, HIGH);
-  sendDPSKBits(bdw1_preamble);
-  sendDPSKBits(bdw1_content);
-  digitalWrite(PIN_TXEN, LOW);
-  delayMicroseconds(220 * k);
-  delayMicroseconds(2200*k);
+  // For all functions and datawords in both sequence one and two,
+  // I check for the station and if the function runs in said station,
+  // I run that function, if not, I delay for the time it would take to
+  // run the function.
 
-  azFunc();
-
-  digitalWrite(PIN_TXEN, HIGH);
-  sendDPSKBits(bdw2_preamble);
-  sendDPSKBits(bdw2_content);
-  digitalWrite(PIN_TXEN, LOW);
-  delayMicroseconds(220 * k);
-  delayMicroseconds(2200 * k);
-
-  elFunc();
-
-  digitalWrite(PIN_TXEN, HIGH);
-  sendDPSKBits(bdw3_preamble);
-  sendDPSKBits(bdw3_content);
-  digitalWrite(PIN_TXEN, LOW);
-  delayMicroseconds(220 * k);
-  delayMicroseconds(2200 * k);
-
-  bazFunc();
-
-  digitalWrite(PIN_TXEN, HIGH);
-  sendDPSKBits(bdw4_preamble);
-  sendDPSKBits(bdw4_content);
-  digitalWrite(PIN_TXEN, LOW);
-  delayMicroseconds(220 * k);
-
-  elFunc();
+  if (STATION == 3 || STATION== 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
   
+  if (STATION == 1 || STATION == 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw1_preamble);
+    sendDPSKBits(bdw1_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+    delayMicroseconds(2200 * k);
+  } else {
+    delay(3.1 * k);
+    delayMicroseconds(2200 * k);
+  }
+
+  if (STATION == 1 || STATION == 0){
+    azFunc();
+  } else {
+    delay(15.9 * k);
+  }
+
+  if (STATION == 1 || STATION == 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw2_preamble);
+    sendDPSKBits(bdw2_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+    delayMicroseconds(2200 * k);
+  } else {
+    delay(3.1 * k);
+    delayMicroseconds(2200 * k);
+  }
+
+
+  if (STATION == 3 || STATION == 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
+
+  if (STATION == 1 || STATION == 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw3_preamble);
+    sendDPSKBits(bdw3_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+    delayMicroseconds(2200 * k);
+  } else {
+    delay(3.1 * k);
+  }
+
+  if (STATION == 2 || STATION == 0){
+    bazFunc();
+  } else {
+    delay(11.9 * k);
+  }
+
+  if (STATION == 1 || STATION == 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw4_preamble);
+    sendDPSKBits(bdw4_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+  } else {
+    delay(3.1 * k);
+  }
+
+  if (STATION == 3 || STATION == 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
+
   delay(8 * k);
 }
 
 // EL, BDW5, AZ, BDW6, EL, AUXDATA, EL
 void sequence2() {
-  elFunc();
+  if (STATION == 3 || STATION == 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
 
-  digitalWrite(PIN_TXEN, HIGH);
-  sendDPSKBits(bdw5_preamble);
-  sendDPSKBits(bdw5_content);
-  digitalWrite(PIN_TXEN, LOW);
-  delayMicroseconds(220 * k);
+  if (STATION == 1 || STATION == 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw5_preamble);
+    sendDPSKBits(bdw5_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+    delayMicroseconds(2200 * k);
+  } else {
+    delay(3.1 * k);
+    delayMicroseconds(2200 * k);
+  }
 
-  azFunc();
+  if (STATION == 1 || STATION == 0){
+    azFunc();
+  } else {
+    delay(15.9 * k);
+  }
 
-  digitalWrite(PIN_TXEN, HIGH);
-  sendDPSKBits(bdw6_preamble);
-  sendDPSKBits(bdw6_content);
-  digitalWrite(PIN_TXEN, LOW);
-  delayMicroseconds(220 * k);
+  if (STATION == 1 || STATION == 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw6_preamble);
+    sendDPSKBits(bdw6_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+    delayMicroseconds(2200 * k);
+  } else {
+    delay(3.1 * k);
+    delayMicroseconds(2200 * k);
+  }
 
-  elFunc();
+  if (STATION == 3 || STATION == 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
 
-  digitalWrite(PIN_TXEN, HIGH);
-  sendDPSKBits(adw_premable);
-  sendDPSKBits(adw_content);
-  digitalWrite(PIN_TXEN, LOW);
-  delayMicroseconds(204 * k);
 
-  elFunc();
+  if (STATION == 1 || STATION == 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(adw_premable);
+    sendDPSKBits(adw_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(204 * k);
+    delayMicroseconds(2200 * k);
+  } else {
+    delay(5.9 * k);
+    delayMicroseconds(2200 * k);
+  }
 
+  if (STATION == 3 || STATION == 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
+
+  delay(18 * k);
+}
+
+void sequence1High(){
+  if (STATION == 3 || STATION== 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
+
+  if (STATION == 1 || STATION== 0){
+    hazFunc();
+  } else {
+    delay(11.9 * k);
+  }
+
+  if (STATION == 1 || STATION== 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw1_preamble);
+    sendDPSKBits(bdw1_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+  } else {
+    delay(3.1 * k);
+  }
+
+  if (STATION == 1 || STATION== 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw3_preamble);
+    sendDPSKBits(bdw3_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+  } else {
+    delay(3.1 * k);
+  }
+
+  if (STATION == 1 || STATION== 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw4_preamble);
+    sendDPSKBits(bdw4_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+  } else {
+    delay(3.1 * k);
+  }
+
+  if (STATION == 1 || STATION== 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw5_preamble);
+    sendDPSKBits(bdw5_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+  } else {
+    delay(3.1 * k);
+  }
+
+  if (STATION == 1 || STATION == 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw6_preamble);
+    sendDPSKBits(bdw6_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+  } else {
+    delay(3.1 * k);
+  }
+
+  if (STATION == 1 || STATION== 0){
+    hazFunc();
+  } else {
+    delay(11.9 * k);
+  }
+
+  if (STATION == 3 || STATION== 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
+
+
+  if (STATION == 1 || STATION== 0){
+    hazFunc();
+  } else {
+    delay(11.9 * k);
+  }
+
+  if (STATION == 3 || STATION== 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
+
+  delay(9 * k);
+}
+
+void sequence2High() {
+  if (STATION == 3 || STATION== 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
+
+  if (STATION == 1 || STATION== 0){
+    hazFunc();
+  } else {
+    delay(11.9 * k);
+  }
+
+  if (STATION == 1 || STATION == 0){
+    digitalWrite(PIN_TXEN, HIGH);
+    sendDPSKBits(bdw2_preamble);
+    sendDPSKBits(bdw2_content);
+    digitalWrite(PIN_TXEN, LOW);
+    delayMicroseconds(220 * k);
+  } else {
+    delay(3.1 * k);
+  }
+
+  if (STATION == 2 || STATION == 0){
+    bazFunc();
+  } else {
+    delay(11.9 * k);
+  }
+
+  if (STATION == 1 || STATION== 0){
+    hazFunc();
+  } else {
+    delay(11.9 * k);
+  }
+
+  if (STATION == 3 || STATION== 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
+
+  if (STATION == 1 || STATION== 0){
+    hazFunc();
+  } else {
+    delay(11.9 * k);
+  }
+
+  if (STATION == 3 || STATION== 0){
+    elFunc();
+  } else {
+    delay(5.6 * k);
+  }
 }
